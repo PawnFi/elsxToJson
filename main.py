@@ -1,8 +1,10 @@
 from copy import copy
+import shutil
 from numpy import append
 import openpyxl
 from openpyxl.worksheet.worksheet import Worksheet
 from openpyxl.cell import MergedCell
+import json_tools
 import json
 import io
 import os
@@ -52,36 +54,61 @@ def getMaxEndRow(sheet,dependcolumn):
             # print(temp.value,flag)
             if temp.value != flag:
                 flag = temp.value
-                max_end_row = i   
+                max_end_row = i 
+    # print(max_end_row)  
     return max_end_row         
 
 
 def excel_to_json(sheet,lan_name,max_end_row,module_column,component_coloum,key_column,lan_column):
-    result = {}
+    # result = {}
     l1 = getSortList(sheet,2,max_end_row,module_column) 
     for index in range(len(l1)):
-        subRes = []
+        subRes = {}
         l2 = getSortList(sheet,l1[index]["start"],l1[index]["end"],component_coloum)
         for i in range(len(l2)):
             value = getLanDetail(sheet,l2[i]["start"],l2[i]["end"],key_column,lan_column)
             key = l2[i]['head']
             if key != None:
-                subRes.append({key:value})
-        result[l1[index]['head']] = copy(subRes)
-    if not os.path.exists('output'):  # 是否存在这个文件夹 
-        os.makedirs('output')  # 如果没有这个文件夹，那就创建一个
-    json_file_name ='./output/'+lan_name + '_result.json'
-    save_json_file(result, json_file_name)
+                subRes[key]=value
+                
+        pathName='./output/{}/'.format(lan_name)
+        json_file_name =pathName+ '{}.json'.format(l1[index]['head'])
+        old_pathName = pathName+'old/'
+        old_json_file_name = old_pathName+ 'old{}.json'.format(l1[index]['head'])
+        change_pathName = pathName+'old/change/'
+        change_json_file_name = change_pathName+ 'change{}.json'.format(l1[index]['head'])
+        if not os.path.exists(json_file_name): # 不存在这个文件 
+            if not os.path.exists(pathName):  # 不存在这个文件夹 
+                os.makedirs(pathName)  # 如果没有这个文件夹，那就创建一个
+            save_json_file(subRes, json_file_name)# 创建新文件
+        else:                                  # 存在这个文件
+            if not os.path.exists(old_pathName):  # 不存在这个文件夹 
+                os.makedirs(old_pathName)  # 如果没有这个文件夹，那就创建一个
+            if os.path.exists(old_json_file_name):os.remove(old_json_file_name)
+            os.rename(json_file_name,old_json_file_name) #创建旧文件(已有文件改名并移动)
+            
+            save_json_file(subRes, json_file_name)# 创建新文件
+            
+            if not os.path.exists(change_pathName):  # 不存在这个文件夹 
+                os.makedirs(change_pathName)  # 如果没有这个文件夹，那就创建一个
+            getJsonDiff(old_json_file_name,json_file_name,change_json_file_name) #生成对比文件
+            
+            
+            
+        
+        
 
-def getSortList(sheet,start=2,stop=400,cloumn=3):
+def getSortList(sheet,start=2,stop=389,column=3):
     tempList = []
     heads = []
-    for row in range(start,stop):
-        temp=sheet.cell(row,cloumn)
+    for row in range(start,stop+1):
+        temp=sheet.cell(row,column)
         if(isinstance(temp,MergedCell)==False):
             tempList.append(row)
         if(temp.value!= None):
             heads.append(temp.value)
+    # print(len(heads)*2,len(tempList))
+    if((len(heads)*2 != len(tempList)) and column<=3):print('在第{}列发现一个格式错误，生成json可能存在问题，请修复！'.format(column))
     tempList = tempList[slice(0,len(heads)*2)]
     sortList = []
     tempItem = {}
@@ -92,14 +119,15 @@ def getSortList(sheet,start=2,stop=400,cloumn=3):
         else:
             tempItem['end'] = tempList[index]
             sortList.append(copy(tempItem))
+    # print(sortList)
     return sortList
 
-def getLanDetail(sheet,start,end,key_cloumn=5,lan_cloumn=7):
+def getLanDetail(sheet,start,end,key_column=5,lan_column=7):
     result = {}
     for i in range(start,end):
-        key = sheet.cell(i,key_cloumn).value
+        key = sheet.cell(i,key_column).value
         if key != None:
-            result[key] = transNull(sheet.cell(i,lan_cloumn).value)
+            result[key] = transNull(sheet.cell(i,lan_column).value)
     return result
 def transNull(nul):
     if nul == None:
@@ -109,10 +137,60 @@ def transNull(nul):
                   
 
 def save_json_file(jd,json_file_name):
+    
     file = io.open(json_file_name,'w',encoding='utf-8')
     txt = json.dumps(jd, indent=2, ensure_ascii=False)
     file.write(txt)
     file.close()
+
+def getJsonDiff(oldpath,newpath,changepath):
+    oldJson={}
+    newJson={}
+    with open(oldpath,'r',encoding='utf-8') as f:
+        oldJson = json.load(f)
+    with open(newpath,'r',encoding='utf-8') as f:
+        newJson = json.load(f)
+    diffData = json_tools.diff(oldJson,newJson)
+    # print(diffData)
+    for i in range(len(diffData)):
+        item = diffData[i]
+        key = list(item.keys())[0]
+        # print(diffData[i],key)
+        if key == 'add':
+            if not isinstance(item['value'],str):
+                item['value']={'新增对象键与内容':item['value']}
+            else: item['value'] = item['value']+ ' //新增键与内容++++++++++++++++++++++++++++'
+        elif key == 'replace':
+            if item['prev'] == '':
+                if not isinstance(item['value'],str):
+                    item['value']={'新增对象内容':item['value']}
+                else: item['value'] = item['value']+ ' //新增内容++++++++++++++++++++++++++++'
+            elif item['value'] == '':
+                if not (isinstance(item['value'],str) or isinstance(item['prev'],str)):
+                    item['value']={'删除对象内容':item['prev']}
+                else: item['value'] = item['value']+ ' //删除内容-------------------------prev: '+item['prev']
+            else:
+                if not (isinstance(item['value'],str) or isinstance(item['prev'],str)):
+                    item['value']={'更改对象内容':item['prev']}
+                else: item['value'] = item['value']+ ' //更改============================prev: '+item['prev']
+        elif key == 'remove':
+            item['add'] = item['remove']
+            del(item['remove'])
+            if not isinstance(item['prev'],str):
+                item['value']={'删除对象键与内容':item['prev']}
+            else: item['value']=' //删除键与内容-------------------------prev: '+item['prev']
+            del(item['prev'])
+        diffData[i] = copy(item)
+        # print(item)
+    # print(diffData)
+    if diffData == False:print(newpath+"发生更改，请打开"+changepath+'检查更改')
+    
+    changeJson = json_tools.patch(oldJson,diffData)
+    save_json_file(changeJson,changepath)
+    
+        
+            
+        
+
 if '__main__'==__name__:
-    # excel_to_jsons(u'testPro.xlsx','result2.json')
     excel_to_jsons(u'testPro.xlsx')
