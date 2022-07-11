@@ -40,8 +40,8 @@ def excel_to_jsons(excel_file):
     for i in range(len(LanList)):
         lan_name = list(LanList[i].keys())[0]
         lan_column = list(LanList[i].values())[0]
+        print(lan_name.upper()+':')#--
         excel_to_json(sheet,lan_name,max_end_row,module_column,component_column,key_column,lan_column)
-        print(lan_name.upper())#--
     book.close()
             
 def getMaxEndRow(sheet,dependcolumn):
@@ -125,7 +125,7 @@ def getSortList(sheet,start=2,stop=389,column=3):
 def getLanDetail(sheet,start,end,key_column=5,lan_column=7):
     result = {}
     for i in range(start,end):
-        key = sheet.cell(i,key_column).value
+        key = transNUllWithTips(sheet.cell(i,key_column).value,i,key_column,sheet.cell(i,lan_column))
         if key != None:
             result[key] = transNull(sheet.cell(i,lan_column).value)
     return result
@@ -134,7 +134,10 @@ def transNull(nul):
         return ''
     else:
         return nul
-                  
+def transNUllWithTips(nul,row,column,cell):
+    if nul == None and cell.value != None:
+        print('在{}行{}列缺失key，请检查。'.format(row,column))
+    return transNull(nul)
 
 def save_json_file(jd,json_file_name):
     
