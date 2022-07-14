@@ -9,6 +9,7 @@ import json_tools
 import json
 import io
 import os
+import msvcrt
 def excel_to_jsons(excel_file,file_name):
     book = openpyxl.load_workbook(excel_file)
     sheet = book["Sheet1"]
@@ -229,6 +230,8 @@ def outPut():
         file_name = temp[1][index].split('.')[0]
         # print(item,file_name)
         excel_to_jsons(item,file_name) 
+    print("请按任意键退出~")
+    ord(msvcrt.getch())
 
 if '__main__'==__name__:
     # excel_to_jsons(u'./input/testPro.xlsx')
