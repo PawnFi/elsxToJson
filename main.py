@@ -1,4 +1,5 @@
 from copy import copy
+from posixpath import split
 import shutil
 from numpy import append
 import openpyxl
@@ -8,7 +9,7 @@ import json_tools
 import json
 import io
 import os
-def excel_to_jsons(excel_file):
+def excel_to_jsons(excel_file,file_name):
     book = openpyxl.load_workbook(excel_file)
     sheet = book["Sheet1"]
     max_row = sheet.max_row
@@ -36,12 +37,12 @@ def excel_to_jsons(excel_file):
             elif temp == '修訂版':fix_column = i   
             elif i>max(1,key_column): LanList.append({temp:i})
     max_end_row = getMaxEndRow(sheet,module_column)
-    print("生成{}种语言:".format(len(LanList)))#--
+    print("生成{}种语言({}):".format(len(LanList),file_name))#--
     for i in range(len(LanList)):
         lan_name = list(LanList[i].keys())[0]
         lan_column = list(LanList[i].values())[0]
         print(lan_name.upper()+':')#--
-        excel_to_json(sheet,lan_name,max_end_row,module_column,component_column,key_column,lan_column)
+        excel_to_json(sheet,lan_name,max_end_row,module_column,component_column,key_column,lan_column,file_name)
     book.close()
             
 def getMaxEndRow(sheet,dependcolumn):
@@ -59,7 +60,7 @@ def getMaxEndRow(sheet,dependcolumn):
     return max_end_row         
 
 
-def excel_to_json(sheet,lan_name,max_end_row,module_column,component_coloum,key_column,lan_column):
+def excel_to_json(sheet,lan_name,max_end_row,module_column,component_coloum,key_column,lan_column,file_name):
     # result = {}
     l1 = getSortList(sheet,2,max_end_row,module_column) 
     for index in range(len(l1)):
@@ -71,7 +72,7 @@ def excel_to_json(sheet,lan_name,max_end_row,module_column,component_coloum,key_
             if key != None:
                 subRes[key]=value
                 
-        pathName='./output/{}/'.format(lan_name)
+        pathName='./output/{}/{}/'.format(file_name,lan_name)
         json_file_name =pathName+ '{}.json'.format(l1[index]['head'])
         old_pathName = pathName+'old/'
         old_json_file_name = old_pathName+ 'old{}.json'.format(l1[index]['head'])
@@ -191,9 +192,50 @@ def getJsonDiff(oldpath,newpath,changepath):
     changeJson = json_tools.patch(oldJson,diffData)
     save_json_file(changeJson,changepath)
     
-        
+def ScanFile(directory, prefix=None, postfix=None):
+    file_list = []
+    temp_list = []
+    for root, sub_dirs, files in os.walk(directory):
+        for special_file in files:
+            # 如果指定前缀或者后缀
+            if postfix or prefix:
+                # 同时指定前缀和后缀
+                if postfix and prefix:
+                    if special_file.endswith(postfix) and special_file.startswith(prefix):
+                        file_list.append(os.path.join(root, special_file))
+                        # temp_list.append(os.path.join(special_file))
+                        continue
+
+                # 只指定后缀
+                elif postfix:
+                    if special_file.endswith(postfix):
+                        file_list.append(os.path.join(root, special_file))
+                        temp_list.append(os.path.join(special_file))
+                        continue
+
+                # 只指定前缀
+                elif prefix:
+                    if special_file.startswith(prefix):
+                        file_list.append(os.path.join(root, special_file))
+                        # temp_list.append(os.path.join(special_file))
+                        continue
+
+            # 前缀后缀均未指定
+            else:
+                file_list.append(os.path.join(root, special_file))
+                continue
+	# 打印出扫描到的文件路径
+    # print(file_list,temp_list)
+    return [file_list,temp_list]
             
-        
+def outPut():
+    temp = ScanFile("./input",None,".xlsx")
+    for index,item in enumerate(temp[0]):
+        file_name = temp[1][index].split('.')[0]
+        # print(item,file_name)
+        excel_to_jsons(item,file_name) 
 
 if '__main__'==__name__:
-    excel_to_jsons(u'testPro.xlsx')
+    # excel_to_jsons(u'./input/testPro.xlsx')
+    outPut()
+    
