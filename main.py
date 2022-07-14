@@ -92,12 +92,7 @@ def excel_to_json(sheet,lan_name,max_end_row,module_column,component_coloum,key_
             
             if not os.path.exists(change_pathName):  # 不存在这个文件夹 
                 os.makedirs(change_pathName)  # 如果没有这个文件夹，那就创建一个
-            getJsonDiff(old_json_file_name,json_file_name,change_json_file_name) #生成对比文件
-            
-            
-            
-        
-        
+            getJsonDiff(old_json_file_name,json_file_name,change_json_file_name) #生成对比文件    
 
 def getSortList(sheet,start=2,stop=389,column=3):
     tempList = []
