@@ -2,9 +2,6 @@
 
   	pip install -r requirements.txt
 
-​	（ps:因为python3 里已经没有basestring 类型，用str代替了basestring）
-
-​	（需要在json_tools库的patch函数中修改basestring=>str)
 
 #使用方法：
 
