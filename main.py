@@ -199,7 +199,7 @@ def ScanFile(directory, prefix=None, postfix=None):
                 if postfix and prefix:
                     if special_file.endswith(postfix) and special_file.startswith(prefix):
                         file_list.append(os.path.join(root, special_file))
-                        # temp_list.append(os.path.join(special_file))
+                        temp_list.append(os.path.join(special_file))
                         continue
 
                 # 只指定后缀
@@ -225,7 +225,8 @@ def ScanFile(directory, prefix=None, postfix=None):
     return [file_list,temp_list]
             
 def outPut():
-    temp = ScanFile("./input",None,".xlsx")
+    prefix = input("请输入筛选前缀:\n")
+    temp = ScanFile("./input",prefix,".xlsx")
     for index,item in enumerate(temp[0]):
         file_name = temp[1][index].split('.')[0]
         # print(item,file_name)
